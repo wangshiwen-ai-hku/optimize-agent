@@ -13,6 +13,7 @@
 - **专业引用** ⭐：使用 "第 X 页" 而不是技术性标识，易于读者理解
 - **对话记录** 🆕：自动保存问答历史为 Markdown 格式，支持 LaTeX 数学公式
 - **图片生成** 🆕：可生成流程图、概念图等示意图辅助理解
+- **材料缓存** 🆕：智能缓存机制，后续问题响应速度提升数百倍
 - 支持交互式探索和深度学习
 - 提供清晰的步骤解释和示例
 - 引用材料中的相关内容
@@ -178,6 +179,7 @@ asyncio.run(solver_example())
 - [连续工作模式](docs/CONTINUOUS_MODE.md) - 自动化工作流程 ⭐
 - [引用格式指南](docs/CITATION_GUIDE.md) - 专业引用规范 ⭐
 - [对话记录功能](docs/CONVERSATION_LOGGING.md) - Markdown 格式记录和图片生成 🆕
+- [材料缓存机制](docs/MATERIAL_CACHE.md) - 智能缓存提升性能 🆕
 
 ## 🤝 贡献
 

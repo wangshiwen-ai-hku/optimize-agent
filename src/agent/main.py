@@ -100,6 +100,15 @@ async def interactive_tutor(materials: list[str | Path]):
             print(f"Conversation saved to: {summary['markdown_file']}")
             print(f"Session directory: {summary['session_dir']}")
             
+            # 显示缓存信息
+            from src.utils.material_tools import get_material_manager
+            manager = get_material_manager()
+            loaded_materials = manager.get_loaded_materials()
+            if loaded_materials:
+                print(f"\nCached materials: {len(loaded_materials)}")
+                for mat in loaded_materials:
+                    print(f"  - {Path(mat).name}")
+            
             # 导出 JSON
             json_file = logger_instance.export_json()
             print(f"JSON export: {json_file}")

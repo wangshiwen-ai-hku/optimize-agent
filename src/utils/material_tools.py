@@ -17,19 +17,42 @@ class MaterialManager:
         self.vector_stores: Dict[str, VectorStore] = {}
         self.current_material: Optional[str] = None
     
-    def load_material(self, material_path: str | Path) -> Dict[str, Any]:
+    def load_material(self, material_path: str | Path, force_reload: bool = False) -> Dict[str, Any]:
         """
-        加载材料文件
+        加载材料文件（带缓存）
         
         Args:
             material_path: 材料文件路径
+            force_reload: 是否强制重新加载（默认 False，使用缓存）
             
         Returns:
             加载结果信息
         """
         material_path = Path(material_path)
-        material_key = str(material_path)
+        material_key = str(material_path.absolute())  # 使用绝对路径作为 key
         
+        # 检查缓存
+        if not force_reload and material_key in self.pdf_processors:
+            # 材料已加载，返回缓存的摘要信息
+            self.current_material = material_key
+            processor = self.pdf_processors[material_key]
+            
+            if material_path.suffix.lower() == '.pdf':
+                summary = processor.get_summary()
+                summary['file_name'] = material_path.name
+                summary['file_type'] = 'pdf'
+                summary['cached'] = True
+                return summary
+            else:
+                return {
+                    'file_name': material_path.name,
+                    'file_type': material_path.suffix[1:],
+                    'total_chunks': len(processor.chunks),
+                    'total_characters': len(processor.full_text),
+                    'cached': True
+                }
+        
+        # 未缓存，需要加载
         if material_path.suffix.lower() == '.pdf':
             # 加载 PDF
             processor = PDFProcessor(chunk_size=1000, chunk_overlap=200)
@@ -46,6 +69,7 @@ class MaterialManager:
             summary = processor.get_summary()
             summary['file_name'] = material_path.name
             summary['file_type'] = 'pdf'
+            summary['cached'] = False
             
             return summary
         
@@ -72,7 +96,8 @@ class MaterialManager:
                 'file_name': material_path.name,
                 'file_type': material_path.suffix[1:],
                 'total_chunks': len(processor.chunks),
-                'total_characters': len(content)
+                'total_characters': len(content),
+                'cached': False
             }
         
         else:
@@ -161,6 +186,55 @@ class MaterialManager:
         chunk = processor.get_chunk_by_id(chunk_id)
         
         return self._chunk_to_dict(chunk) if chunk else None
+    
+    def is_material_loaded(self, material_path: str | Path) -> bool:
+        """
+        检查材料是否已加载
+        
+        Args:
+            material_path: 材料文件路径
+            
+        Returns:
+            是否已加载
+        """
+        material_path = Path(material_path)
+        material_key = str(material_path.absolute())
+        return material_key in self.pdf_processors
+    
+    def get_loaded_materials(self) -> List[str]:
+        """
+        获取所有已加载的材料列表
+        
+        Returns:
+            材料路径列表
+        """
+        return list(self.pdf_processors.keys())
+    
+    def clear_cache(self, material_path: Optional[str | Path] = None):
+        """
+        清除缓存
+        
+        Args:
+            material_path: 要清除的材料路径（None 则清除所有）
+        """
+        if material_path is None:
+            # 清除所有缓存
+            self.pdf_processors.clear()
+            self.vector_stores.clear()
+            self.current_material = None
+        else:
+            # 清除指定材料
+            material_path = Path(material_path)
+            material_key = str(material_path.absolute())
+            
+            if material_key in self.pdf_processors:
+                del self.pdf_processors[material_key]
+            if material_key in self.vector_stores:
+                del self.vector_stores[material_key]
+            
+            if self.current_material == material_key:
+                # 如果清除的是当前材料，切换到其他材料或 None
+                self.current_material = next(iter(self.pdf_processors.keys()), None)
     
     @staticmethod
     def _chunk_to_dict(chunk: TextChunk) -> Dict[str, Any]:

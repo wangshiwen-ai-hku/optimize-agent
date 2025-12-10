@@ -92,7 +92,7 @@ async def tutor_node(state: State) -> State:
     # 获取材料管理器
     material_manager = get_material_manager()
     
-    # 加载材料
+    # 加载材料（使用缓存）
     material_info = []
     for material in materials:
         if isinstance(material, (str, Path)):
@@ -101,7 +101,11 @@ async def tutor_node(state: State) -> State:
                 try:
                     info = material_manager.load_material(path)
                     material_info.append(f"- {info['file_name']}: {info.get('total_pages', 1)} pages, {info['total_chunks']} chunks")
-                    log_success(f"Loaded material: {info['file_name']}")
+                    
+                    if info.get('cached', False):
+                        log_success(f"Using cached material: {info['file_name']}")
+                    else:
+                        log_success(f"Loaded material: {info['file_name']}")
                 except Exception as e:
                     log_warning(f"Failed to load {path}: {e}")
     
