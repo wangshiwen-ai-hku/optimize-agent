@@ -82,6 +82,13 @@ async def tutor_node(state: State) -> State:
     question = state.get("question", "")
     materials = state.get("materials", [])
     
+    # 获取对话记录器
+    from src.utils.conversation_logger import get_conversation_logger
+    conversation_logger = get_conversation_logger()
+    
+    # 记录问题
+    conversation_logger.log_question(question)
+    
     # 获取材料管理器
     material_manager = get_material_manager()
     
@@ -121,6 +128,17 @@ INSTRUCTIONS:
 - Call tools as many times as needed (you can make 8-10 tool calls)
 - Only provide your final answer when you have sufficient information
 - If you say "let me check X", immediately call the appropriate tool to check X
+- You can use generate_diagram tool to create visual aids when helpful
+
+OUTPUT FORMAT (CRITICAL):
+- Your FINAL ANSWER must be in MARKDOWN format
+- Use proper Markdown syntax for structure and formatting
+- Mathematical formulas MUST use LaTeX syntax with proper delimiters:
+  * Inline math: $formula$ (e.g., $x^2 + y^2 = r^2$)
+  * Display math: $$formula$$ (e.g., $$\\\\int_0^\\\\infty e^{{-x^2}} dx = \\\\frac{{\\\\sqrt{{\\\\pi}}}}{{2}}$$)
+  * For complex formulas, use display mode ($$...$$) for better readability
+- Use Markdown headers (##, ###) to organize your answer
+- Use lists, bold, italic, and other Markdown features appropriately
 
 CITATION FORMAT (CRITICAL):
 - In your FINAL ANSWER, cite sources using "第 X 页" or "第 X 章"
@@ -129,7 +147,7 @@ CITATION FORMAT (CRITICAL):
 - Example: "根据第 5 页的内容..." NOT "根据 Chunk 13..."
 - Make your answer readable and professional for students
 
-Start by searching for relevant information, then continue gathering more details until you can provide a complete answer with proper page-based citations.
+Start by searching for relevant information, then continue gathering more details until you can provide a complete answer with proper page-based citations and proper Markdown/LaTeX formatting.
 """
     
     # 创建工具
@@ -169,8 +187,8 @@ Start by searching for relevant information, then continue gathering more detail
                     
                     log_tool(tool_name, f"Call #{tool_call_count} - Args: {tool_args}")
                     
-                    # 执行工具
-                    tool_result = execute_tool_call(tool_name, tool_args, material_manager)
+                    # 执行工具（传入对话记录器）
+                    tool_result = execute_tool_call(tool_name, tool_args, material_manager, conversation_logger)
                     
                     # 添加助手的函数调用到消息历史
                     messages.append({
@@ -223,6 +241,22 @@ Start by searching for relevant information, then continue gathering more detail
                     # 否则，这是最终答案
                     state["result"] = result
                     state["messages"].append({"role": "assistant", "content": result})
+                    
+                    # 收集生成的图片路径
+                    generated_images = []
+                    for msg in messages:
+                        if msg.get("role") == "user" and "function_response" in msg.get("parts", [{}])[0]:
+                            func_resp = msg["parts"][0]["function_response"]
+                            if func_resp.get("name") == "generate_diagram":
+                                result_data = func_resp.get("response", {}).get("result", {})
+                                if isinstance(result_data, dict) and result_data.get("success"):
+                                    img_path = result_data.get("image_path")
+                                    if img_path:
+                                        generated_images.append(img_path)
+                    
+                    # 记录回答
+                    conversation_logger.log_answer(result, images=generated_images)
+                    
                     log_success(f"Tutor response generated (after {tool_call_count} tool calls)")
                     break
             

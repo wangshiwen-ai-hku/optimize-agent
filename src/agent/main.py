@@ -72,17 +72,38 @@ async def run_solver(problem: str) -> dict:
 
 async def interactive_tutor(materials: list[str | Path]):
     """交互式 Tutor 模式"""
+    from src.utils.conversation_logger import get_conversation_logger, reset_conversation_logger
+    
+    # 重置并创建新的会话记录器
+    reset_conversation_logger()
+    logger_instance = get_conversation_logger()
+    
     print("=" * 60)
     print("Math Tutor - Interactive Mode")
     print("=" * 60)
     print(f"Loaded {len(materials)} material(s)")
+    print(f"Session ID: {logger_instance.session_id}")
+    print(f"Conversation will be saved to: {logger_instance.markdown_file}")
     print("Type 'exit' to quit\n")
     
     while True:
         question = input("Your question: ").strip()
         
         if question.lower() in ['exit', 'quit', 'q']:
-            print("Goodbye!")
+            # 显示会话摘要
+            summary = logger_instance.get_session_summary()
+            print("\n" + "=" * 60)
+            print("Session Summary")
+            print("=" * 60)
+            print(f"Total Q&A exchanges: {summary['total_exchanges']}")
+            print(f"Total images generated: {summary['total_images']}")
+            print(f"Conversation saved to: {summary['markdown_file']}")
+            print(f"Session directory: {summary['session_dir']}")
+            
+            # 导出 JSON
+            json_file = logger_instance.export_json()
+            print(f"JSON export: {json_file}")
+            print("\nGoodbye!")
             break
         
         if not question:
